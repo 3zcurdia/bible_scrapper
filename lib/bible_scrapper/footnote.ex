@@ -41,13 +41,11 @@ defmodule BibleScrapper.Footnote do
 
   # Recursively flatten nested tags into plain text
   defp flatten_text(nodes) when is_list(nodes) do
-    nodes
-    |> Enum.map(fn
+    Enum.map_join(nodes, fn
       binary when is_binary(binary) -> binary
       {_, _, children} -> flatten_text(children)
       _ -> ""
     end)
-    |> Enum.join()
   end
 
   defp flatten_text(_), do: ""

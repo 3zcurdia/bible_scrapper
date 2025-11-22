@@ -159,33 +159,16 @@ defmodule BibleScrapper do
       |> Floki.parse_document!()
 
     passage = Floki.find(document, ".passage-content")
-    titles = Floki.find(passage, "h3") |> Floki.text()
+    titles = passage |> Floki.find("h3") |> Floki.text()
 
-    crossrefs =
-      passage
-      |> Floki.find("div.crossrefs ol li")
-      |> Crossref.scrape()
-
-    footnotes =
-      passage
-      |> Floki.find("div.footnotes ol li")
-      |> Footnote.scrape()
+    crossrefs = scrape_crossrefs(passage)
+    footnotes = scrape_footnotes(passage)
 
     verses =
       passage
       |> Floki.find("p span.text")
       |> Enum.map(&Verse.scrape/1)
-      |> Enum.map(fn verse ->
-        new_content =
-          verse.content
-          |> Enum.map(fn content ->
-            content
-            |> Map.put(:crossrefs, Enum.flat_map(content.crossrefs, fn key -> crossrefs[key] end))
-            |> Map.put(:footnotes, Enum.map(content.footnotes, fn key -> footnotes[key] end))
-          end)
-
-        Map.put(verse, :content, new_content)
-      end)
+      |> Enum.map(&build_verse(&1, footnotes, crossrefs))
 
     %{
       book: book,
@@ -193,5 +176,28 @@ defmodule BibleScrapper do
       titles: titles,
       verses: verses
     }
+  end
+
+  defp scrape_footnotes(doc) do
+    doc
+    |> Floki.find("div.footnotes ol li")
+    |> Footnote.scrape()
+  end
+
+  defp scrape_crossrefs(doc) do
+    doc
+    |> Floki.find("div.crossrefs ol li")
+    |> Crossref.scrape()
+  end
+
+  defp build_verse(verse, footnotes, crossrefs) do
+    new_content =
+      Enum.map(verse.content, fn content ->
+        content
+        |> Map.put(:crossrefs, Enum.flat_map(content.crossrefs, fn key -> crossrefs[key] end))
+        |> Map.put(:footnotes, Enum.map(content.footnotes, fn key -> footnotes[key] end))
+      end)
+
+    Map.put(verse, :content, new_content)
   end
 end

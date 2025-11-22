@@ -14,18 +14,20 @@ defmodule BibleScrapper.Verse do
   end
 
   def parse_num(span) do
-    span
-    |> Floki.find(".versenum")
-    |> Floki.text()
-    |> String.trim()
-    |> case do
+    content =
+      span
+      |> Floki.find(".versenum")
+      |> Floki.text()
+      |> String.trim()
+
+    case content do
       "" ->
         1
 
       txt ->
-        txt
-        |> String.replace(~r/[^\d]/, "")
-        |> case do
+        text = String.replace(txt, ~r/[^\d]/, "")
+
+        case text do
           "" -> 1
           num -> String.to_integer(num)
         end
