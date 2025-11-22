@@ -124,6 +124,12 @@ defmodule BibleScrapper do
     |> Map.merge(@apocrypha)
   end
 
+  def scrape_and_save!(version, path) do
+    version
+    |> scrape()
+    |> save!(path)
+  end
+
   def scrape(version \\ "NRSVUE") do
     books()
     |> Map.keys()

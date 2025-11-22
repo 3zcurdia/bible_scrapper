@@ -1,6 +1,6 @@
 # BibleScrapper
 
-**TODO: Add description**
+Simple biblegateway scrapper.
 
 ## Installation
 
@@ -15,7 +15,12 @@ def deps do
 end
 ```
 
+### Usage
+
+```elixir
+  BibleScrapper.scrape_and_save!("KJV", "kjv.json")
+```
+
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
 be found at <https://hexdocs.pm/bible_scrapper>.
-
