@@ -7,7 +7,13 @@ defmodule BibleScrapper.MixProject do
       version: "0.1.0",
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      description: "A Bible webscraper that scrapes the Bible and saves it to a JSON file.",
+      package: [
+        maintainers: ["Luis Ezcurdia"],
+        licenses: ["MIT"],
+        links: %{"GitHub" => "https://github.com/3zcurdia/bible_scrapper"}
+      ]
     ]
   end
 
