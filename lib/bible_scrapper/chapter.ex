@@ -7,8 +7,8 @@ defmodule BibleScrapper.Chapter do
   alias BibleScrapper.Footnote
   alias BibleScrapper.Verse
 
-  @spec scrape(Floki.html_tree(), integer()) :: map()
-  def scrape(document, chapter) do
+  @spec scrape(Floki.html_tree(), integer(), Keyword.t()) :: map()
+  def scrape(document, chapter, options \\ []) do
     passage = Floki.find(document, ".passage-content")
     titles = passage |> Floki.find("h3") |> Floki.text()
 
@@ -19,7 +19,7 @@ defmodule BibleScrapper.Chapter do
       passage
       |> Floki.find("p span.text")
       |> Enum.map(&Verse.scrape/1)
-      |> Enum.map(&build_verse(&1, footnotes, crossrefs))
+      |> Enum.map(&build_verse(&1, footnotes, crossrefs, options))
 
     %{
       chapter: chapter,
@@ -40,13 +40,32 @@ defmodule BibleScrapper.Chapter do
     |> Crossref.scrape()
   end
 
-  defp build_verse(verse, footnotes, crossrefs) do
+  defp build_verse(verse, footnotes, crossrefs, options) do
     new_content =
-      Enum.map(verse.content, fn content ->
-        content
-        |> Map.put(:crossrefs, Enum.flat_map(content.crossrefs, fn key -> crossrefs[key] end))
-        |> Map.put(:footnotes, Enum.map(content.footnotes, fn key -> footnotes[key] end))
-      end)
+      if Keyword.get(options, :verse_content_object, false) do
+        Enum.map(verse.content, fn content ->
+          content
+          |> Map.put(:crossrefs, Enum.flat_map(content.crossrefs, fn key -> crossrefs[key] end))
+          |> Map.put(:footnotes, Enum.map(content.footnotes, fn key -> footnotes[key] end))
+        end)
+      else
+        verse.content
+        |> Enum.map(fn content ->
+          content.text
+
+          crossrefs = Enum.flat_map(content.crossrefs, fn key -> crossrefs[key] end)
+          footnotes = Enum.map(content.footnotes, fn key -> footnotes[key] end)
+
+          crossrefs_txt =
+            if Enum.empty?(crossrefs), do: "", else: " [Crossrefs: #{Enum.join(crossrefs, ", ")}]"
+
+          footnotes_txt =
+            if Enum.empty?(footnotes), do: "", else: " (Footnotes: #{Enum.join(footnotes, ", ")})"
+
+          content.text <> crossrefs_txt <> footnotes_txt
+        end)
+        |> Enum.join(" ")
+      end
 
     Map.put(verse, :content, new_content)
   end

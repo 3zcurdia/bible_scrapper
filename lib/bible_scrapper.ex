@@ -103,23 +103,29 @@ defmodule BibleScrapper do
     "4 maccabees" => 18
   }
 
-  defp books do
-    @old_testament
-    |> Map.merge(@new_testament)
-    |> Map.merge(@apocrypha)
+  defp books(with_apocrypha) do
+    bible = Map.merge(@old_testament, @new_testament)
+
+    if with_apocrypha do
+      bible |> Map.merge(@apocrypha)
+    else
+      bible
+    end
   end
 
-  @spec scrape_and_save!(String.t(), String.t()) :: :ok | {:error, File.posix()}
-  def scrape_and_save!(version, path) do
+  @spec scrape_and_save!(String.t(), String.t(), Keyword.t()) :: :ok | {:error, File.posix()}
+  def scrape_and_save!(version, path, options \\ []) do
     version
-    |> scrape()
+    |> scrape(options)
     |> save!(path)
   end
 
-  @spec scrape(String.t()) :: map()
-  def scrape(version) do
-    books()
-    |> Task.async_stream(&scrape_book(&1, version), timeout: @default_receive_timeout)
+  @spec scrape(String.t(), Keyword.t()) :: map()
+  def scrape(version, options \\ []) do
+    options
+    |> Keyword.get(:with_apocrypha, false)
+    |> books()
+    |> Task.async_stream(&scrape_book(&1, version, options), timeout: @default_receive_timeout)
     |> Stream.flat_map(fn
       {:ok, %{name: book, chapters: chapters}} ->
         [{book, chapters}]
@@ -140,21 +146,23 @@ defmodule BibleScrapper do
     File.write(path, Jason.encode!(bible))
   end
 
-  def scrape_book({book, chapters_num}, version \\ @default_bible_version) do
+  def scrape_book({book, chapters_num}, version \\ @default_bible_version, options \\ []) do
     chapters =
       1..chapters_num
-      |> Task.async_stream(&scrape_chapter(book, &1, version), timeout: @default_receive_timeout)
+      |> Task.async_stream(&scrape_chapter(book, &1, version, options),
+        timeout: @default_receive_timeout
+      )
       |> Enum.map(fn {:ok, chapter} -> chapter end)
 
     %{name: book, chapters: chapters}
   end
 
-  defp scrape_chapter(book, chapter, version) do
+  defp scrape_chapter(book, chapter, version, options) do
     bible_gateway_chapter_url(book, chapter, version)
     |> Req.get!(receive_timeout: @default_receive_timeout)
     |> Map.get(:body)
     |> Floki.parse_document!()
-    |> Chapter.scrape(chapter)
+    |> Chapter.scrape(chapter, options)
   end
 
   @doc """
