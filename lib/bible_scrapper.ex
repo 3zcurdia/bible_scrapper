@@ -3,10 +3,9 @@ defmodule BibleScrapper do
   Documentation for `BibleScrapper`.
   """
 
-  alias BibleScrapper.Crossref
-  alias BibleScrapper.Footnote
-  alias BibleScrapper.Verse
+  alias BibleScrapper.Chapter
 
+  @default_bible_version "NRSVUE"
   @default_receive_timeout 30_000
 
   @old_testament %{
@@ -116,7 +115,7 @@ defmodule BibleScrapper do
         "https://www.biblegateway.com/passage/?search=John+3&version=ESV"
 
   """
-  def bible_gateway_url(book, chapter, version \\ "NRSVUE") do
+  def bible_gateway_url(book, chapter, version \\ @default_bible_version) do
     "#{@biblegateway_base_url}?search=#{URI.encode("#{book} #{chapter}")}&version=#{URI.encode_www_form(version)}"
   end
 
@@ -132,10 +131,10 @@ defmodule BibleScrapper do
     |> save!(path)
   end
 
-  def scrape(version \\ "NRSVUE") do
+  def scrape(version) do
     books()
     |> Map.keys()
-    |> Task.async_stream(&scrape_book(&1, version))
+    |> Task.async_stream(&scrape_book(&1, version), timeout: @default_receive_timeout)
     |> Enum.map(fn {:ok, book} -> book end)
   end
 
@@ -145,61 +144,19 @@ defmodule BibleScrapper do
     File.write(path, json)
   end
 
-  def scrape_book(book, version \\ "NRSVUE") do
+  def scrape_book(book, version \\ @default_bible_version) do
     chapters = Map.fetch!(books(), book)
 
     1..chapters
-    |> Task.async_stream(&scrape_chapter(book, &1, version))
+    |> Task.async_stream(&scrape_chapter(book, &1, version), timeout: @default_receive_timeout)
     |> Enum.map(fn {:ok, chapter} -> chapter end)
   end
 
-  def scrape_chapter(book, chapter, version \\ "NRSVUE") do
-    document =
-      bible_gateway_url(book, chapter, version)
-      |> Req.get!(receive_timeout: @default_receive_timeout)
-      |> Map.get(:body)
-      |> Floki.parse_document!()
-
-    passage = Floki.find(document, ".passage-content")
-    titles = passage |> Floki.find("h3") |> Floki.text()
-
-    crossrefs = scrape_crossrefs(passage)
-    footnotes = scrape_footnotes(passage)
-
-    verses =
-      passage
-      |> Floki.find("p span.text")
-      |> Enum.map(&Verse.scrape/1)
-      |> Enum.map(&build_verse(&1, footnotes, crossrefs))
-
-    %{
-      book: book,
-      chapter: chapter,
-      titles: titles,
-      verses: verses
-    }
-  end
-
-  defp scrape_footnotes(doc) do
-    doc
-    |> Floki.find("div.footnotes ol li")
-    |> Footnote.scrape()
-  end
-
-  defp scrape_crossrefs(doc) do
-    doc
-    |> Floki.find("div.crossrefs ol li")
-    |> Crossref.scrape()
-  end
-
-  defp build_verse(verse, footnotes, crossrefs) do
-    new_content =
-      Enum.map(verse.content, fn content ->
-        content
-        |> Map.put(:crossrefs, Enum.flat_map(content.crossrefs, fn key -> crossrefs[key] end))
-        |> Map.put(:footnotes, Enum.map(content.footnotes, fn key -> footnotes[key] end))
-      end)
-
-    Map.put(verse, :content, new_content)
+  defp scrape_chapter(book, chapter, version) do
+    bible_gateway_url(book, chapter, version)
+    |> Req.get!(receive_timeout: @default_receive_timeout)
+    |> Map.get(:body)
+    |> Floki.parse_document!()
+    |> Chapter.scrape(book, chapter)
   end
 end
