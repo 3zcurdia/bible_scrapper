@@ -7,6 +7,8 @@ defmodule BibleScrapper do
   alias BibleScrapper.Footnote
   alias BibleScrapper.Verse
 
+  @default_receive_timeout 30_000
+
   @old_testament %{
     "Genesis" => 50,
     "Exodus" => 40,
@@ -154,7 +156,7 @@ defmodule BibleScrapper do
   def scrape_chapter(book, chapter, version \\ "NRSVUE") do
     document =
       bible_gateway_url(book, chapter, version)
-      |> Req.get!()
+      |> Req.get!(receive_timeout: @default_receive_timeout)
       |> Map.get(:body)
       |> Floki.parse_document!()
 
