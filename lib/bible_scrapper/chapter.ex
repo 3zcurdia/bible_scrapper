@@ -7,8 +7,8 @@ defmodule BibleScrapper.Chapter do
   alias BibleScrapper.Footnote
   alias BibleScrapper.Verse
 
-  @spec scrape(Floki.html_tree(), binary(), integer()) :: map()
-  def scrape(document, book, chapter) do
+  @spec scrape(Floki.html_tree(), integer()) :: map()
+  def scrape(document, chapter) do
     passage = Floki.find(document, ".passage-content")
     titles = passage |> Floki.find("h3") |> Floki.text()
 
@@ -22,7 +22,6 @@ defmodule BibleScrapper.Chapter do
       |> Enum.map(&build_verse(&1, footnotes, crossrefs))
 
     %{
-      book: book,
       chapter: chapter,
       titles: titles,
       verses: verses

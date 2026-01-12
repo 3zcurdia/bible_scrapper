@@ -5,6 +5,8 @@ defmodule BibleScrapper do
 
   alias BibleScrapper.Chapter
 
+  require Logger
+
   @default_bible_version "NRSVUE"
   @default_receive_timeout 30_000
 
@@ -103,60 +105,73 @@ defmodule BibleScrapper do
 
   @biblegateway_base_url "https://www.biblegateway.com/passage/"
 
-  @doc """
-    Returns the URL for a Bible passage on BibleGateway.com.
-
-    ## Examples
-
-        iex> BibleScrapper.bible_gateway_url("John", 3)
-        "https://www.biblegateway.com/passage/?search=John+3&version=NRSVUE"
-
-        iex> BibleScrapper.bible_gateway_url("John", 3, "ESV")
-        "https://www.biblegateway.com/passage/?search=John+3&version=ESV"
-
-  """
-  def bible_gateway_url(book, chapter, version \\ @default_bible_version) do
-    "#{@biblegateway_base_url}?search=#{URI.encode("#{book} #{chapter}")}&version=#{URI.encode_www_form(version)}"
-  end
-
-  def books do
+  defp books do
     @old_testament
     |> Map.merge(@new_testament)
     |> Map.merge(@apocrypha)
   end
 
+  @spec scrape_and_save!(String.t(), String.t()) :: :ok | {:error, File.posix()}
   def scrape_and_save!(version, path) do
     version
     |> scrape()
     |> save!(path)
   end
 
+  @spec scrape(String.t()) :: map()
   def scrape(version) do
     books()
-    |> Map.keys()
     |> Task.async_stream(&scrape_book(&1, version), timeout: @default_receive_timeout)
-    |> Enum.map(fn {:ok, book} -> book end)
+    |> Stream.flat_map(fn
+      {:ok, %{name: book, chapters: chapters}} ->
+        [{book, chapters}]
+
+      {:ok, invalid} ->
+        Logger.warning("Invalid book structure: #{inspect(invalid)}")
+        []
+
+      {:exit, reason} ->
+        Logger.error("Task failed: #{inspect(reason)}")
+        []
+    end)
+    |> Map.new()
   end
 
+  @spec save!(map(), String.t()) :: :ok | {:error, File.posix()}
   def save!(bible, path) do
-    json = Jason.encode!(bible)
-
-    File.write(path, json)
+    File.write(path, Jason.encode!(bible))
   end
 
-  def scrape_book(book, version \\ @default_bible_version) do
-    chapters = Map.fetch!(books(), book)
+  def scrape_book({book, chapters_num}, version \\ @default_bible_version) do
+    chapters =
+      1..chapters_num
+      |> Task.async_stream(&scrape_chapter(book, &1, version), timeout: @default_receive_timeout)
+      |> Enum.map(fn {:ok, chapter} -> chapter end)
 
-    1..chapters
-    |> Task.async_stream(&scrape_chapter(book, &1, version), timeout: @default_receive_timeout)
-    |> Enum.map(fn {:ok, chapter} -> chapter end)
+    %{name: book, chapters: chapters}
   end
 
   defp scrape_chapter(book, chapter, version) do
-    bible_gateway_url(book, chapter, version)
+    bible_gateway_chapter_url(book, chapter, version)
     |> Req.get!(receive_timeout: @default_receive_timeout)
     |> Map.get(:body)
     |> Floki.parse_document!()
-    |> Chapter.scrape(book, chapter)
+    |> Chapter.scrape(chapter)
+  end
+
+  @doc """
+    Returns the URL for a Bible passage on BibleGateway.com.
+
+    ## Examples
+
+        iex> BibleScrapper.bible_gateway_chapter_url("John", 3)
+        "https://www.biblegateway.com/passage/?search=John+3&version=NRSVUE"
+
+        iex> BibleScrapper.bible_gateway_chapter_url("John", 3, "ESV")
+        "https://www.biblegateway.com/passage/?search=John+3&version=ESV"
+
+  """
+  def bible_gateway_chapter_url(book, chapter, version \\ @default_bible_version) do
+    "#{@biblegateway_base_url}?search=#{URI.encode("#{book} #{chapter}")}&version=#{URI.encode_www_form(version)}"
   end
 end
