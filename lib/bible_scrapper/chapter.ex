@@ -49,24 +49,28 @@ defmodule BibleScrapper.Chapter do
           |> Map.put(:footnotes, Enum.map(content.footnotes, fn key -> footnotes[key] end))
         end)
       else
-        verse.content
-        |> Enum.map(fn content ->
-          content.text
+        Enum.map_join(
+          verse.content,
+          " ",
+          fn content ->
+            crossrefs = Enum.flat_map(content.crossrefs, fn key -> crossrefs[key] end)
+            footnotes = Enum.map(content.footnotes, fn key -> footnotes[key] end)
+            crossrefs_txt = textify_enum("Crossrefs", crossrefs)
+            footnotes_txt = textify_enum("Footnotes", footnotes)
 
-          crossrefs = Enum.flat_map(content.crossrefs, fn key -> crossrefs[key] end)
-          footnotes = Enum.map(content.footnotes, fn key -> footnotes[key] end)
-
-          crossrefs_txt =
-            if Enum.empty?(crossrefs), do: "", else: " [Crossrefs: #{Enum.join(crossrefs, ", ")}]"
-
-          footnotes_txt =
-            if Enum.empty?(footnotes), do: "", else: " (Footnotes: #{Enum.join(footnotes, ", ")})"
-
-          content.text <> crossrefs_txt <> footnotes_txt
-        end)
-        |> Enum.join(" ")
+            content.text <> crossrefs_txt <> footnotes_txt
+          end
+        )
       end
 
     Map.put(verse, :content, new_content)
+  end
+
+  defp textify_enum(key, enum) do
+    if Enum.empty?(enum) do
+      ""
+    else
+      " (#{key}: #{Enum.join(enum, ", ")})"
+    end
   end
 end
