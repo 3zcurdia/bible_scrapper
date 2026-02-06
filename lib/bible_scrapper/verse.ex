@@ -93,24 +93,23 @@ defmodule BibleScrapper.Verse do
   defp add_segment(acc, %{text: ""}), do: acc
 
   defp add_segment([last | rest], %{text: text} = seg) do
-    if String.trim(text) == "" do
-      [last | rest]
-    else
-      [seg | [last | rest]]
-    end
-    |> Enum.reverse()
+    if_result =
+      if String.trim(text) == "" do
+        [last | rest]
+      else
+        [seg | [last | rest]]
+      end
+
+    Enum.reverse(if_result)
   end
 
   # ensure text is trimmed and single spaces
-  defp normalize_segment(%{text: t} = seg),
-    do: %{seg | text: String.trim(t)}
+  defp normalize_segment(%{text: t} = seg), do: %{seg | text: String.trim(t)}
 
-  defp get_attr(attrs, key),
-    do: Enum.find_value(attrs, fn {k, v} -> if k == key, do: v end)
+  defp get_attr(attrs, key), do: Enum.find_value(attrs, fn {k, v} -> if k == key, do: v end)
 
   defp strip_ref("#" <> id), do: id
   defp strip_ref(id), do: id
 
-  defp clean_text(txt),
-    do: txt |> String.replace("\u00A0", " ") |> String.replace(~r/\s+/, " ")
+  defp clean_text(txt), do: txt |> String.replace("\u00A0", " ") |> String.replace(~r/\s+/, " ")
 end

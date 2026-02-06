@@ -21,7 +21,7 @@ defmodule BibleScrapper.Footnote do
   end
 
   # Extract attribute from tag attrs
-  defp get_attr(attrs, key), do: attrs |> Enum.find_value(fn {k, v} -> if k == key, do: v end)
+  defp get_attr(attrs, key), do: Enum.find_value(attrs, fn {k, v} -> if k == key, do: v end)
 
   # Recursively find <span class="footnote-text">
   defp find_footnote_text(nodes) do

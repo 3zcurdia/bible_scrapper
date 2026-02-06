@@ -4,14 +4,11 @@ defmodule BibleScrapper.Crossref do
   """
 
   def scrape(li_nodes) when is_list(li_nodes) do
-    li_nodes
-    |> Enum.reduce(%{}, fn
+    Enum.reduce(li_nodes, %{}, fn
       {"li", attrs, children}, acc ->
         id = get_attr(attrs, "id")
 
-        data_bibleref =
-          children
-          |> find_crossref_data_bibleref()
+        data_bibleref = find_crossref_data_bibleref(children)
 
         case {id, data_bibleref} do
           {nil, _} ->
@@ -29,7 +26,7 @@ defmodule BibleScrapper.Crossref do
     end)
   end
 
-  defp get_attr(attrs, key), do: attrs |> Enum.find_value(fn {k, v} -> if k == key, do: v end)
+  defp get_attr(attrs, key), do: Enum.find_value(attrs, fn {k, v} -> if k == key, do: v end)
 
   defp find_crossref_data_bibleref(nodes) do
     Enum.find_value(nodes, fn

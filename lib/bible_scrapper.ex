@@ -107,7 +107,7 @@ defmodule BibleScrapper do
     bible = Map.merge(@old_testament, @new_testament)
 
     if with_apocrypha do
-      bible |> Map.merge(@apocrypha)
+      Map.merge(bible, @apocrypha)
     else
       bible
     end
@@ -158,7 +158,8 @@ defmodule BibleScrapper do
   end
 
   defp scrape_chapter(book, chapter, version, options) do
-    bible_gateway_chapter_url(book, chapter, version)
+    book
+    |> bible_gateway_chapter_url(chapter, version)
     |> Req.get!(receive_timeout: @default_receive_timeout)
     |> Map.get(:body)
     |> Floki.parse_document!()
