@@ -113,11 +113,60 @@ defmodule BibleScrapper do
     end
   end
 
-  @spec scrape_and_save!(String.t(), String.t(), Keyword.t()) :: :ok | {:error, File.posix()}
-  def scrape_and_save!(version, path, options \\ []) do
+  @spec scrape_and_save_markdown!(String.t(), Keyword.t()) :: :ok | {:error, File.posix()}
+  def scrape_and_save_markdown!(version \\ @default_bible_version, options \\ []) do
+    version
+    |> scrape(Keyword.put(options, :verse_content_object, false))
+    |> save_markdown!(Path.join("data", String.downcase(version)))
+  end
+
+  defp save_markdown!(json_content, path) do
+    File.mkdir_p!(path)
+
+    json_content
+    |> Task.async_stream(fn {book, chapters} ->
+      book_underscore = String.replace(book, " ", "_")
+      markdown = "# #{book}\n\n#{to_markdown_chapters(chapters)}"
+      File.write!(Path.join(path, "#{book_underscore}.md"), markdown)
+    end)
+    |> Stream.run()
+  end
+
+  defp to_markdown_chapters(chapters) do
+    chapters
+    |> Enum.map(& &1.chapter)
+    |> Enum.sort()
+    |> Enum.map_join("\n\n", fn chapter_num ->
+      chapter = Enum.find(chapters, &(&1.chapter == chapter_num))
+      titles = chapter["titles"]
+      titles_md = if not is_nil(titles) and String.trim(titles) != "", do: "### #{titles}", else: ""
+
+      """
+      ## Chapter #{chapter_num}
+      #{titles_md}
+
+      #{to_markdown_verses(chapter[:verses])}
+
+      """
+    end)
+  end
+
+  defp to_markdown_verses(verses) do
+    verses
+    |> Enum.map(& &1.verse)
+    |> Enum.sort()
+    |> Enum.map_join("\n", fn verse_num ->
+      verse = Enum.find(verses, &(&1.verse == verse_num))
+      "#{verse_num}: #{verse[:content]}"
+    end)
+  end
+
+  @spec scrape_and_save_json!(String.t(), Keyword.t()) :: :ok | {:error, File.posix()}
+  def scrape_and_save_json!(version \\ @default_bible_version, options \\ []) do
     version
     |> scrape(options)
-    |> save!(path)
+    |> Jason.encode!()
+    |> then(&File.write(Path.join("data", "#{String.downcase(version)}.json"), &1))
   end
 
   @spec scrape(String.t(), Keyword.t()) :: map()
@@ -141,12 +190,7 @@ defmodule BibleScrapper do
     |> Map.new()
   end
 
-  @spec save!(map(), String.t()) :: :ok | {:error, File.posix()}
-  def save!(bible, path) do
-    File.write(path, Jason.encode!(bible))
-  end
-
-  def scrape_book({book, chapters_num}, version \\ @default_bible_version, options \\ []) do
+  def scrape_book({book, chapters_num}, version, options \\ []) do
     chapters =
       1..chapters_num
       |> Task.async_stream(&scrape_chapter(book, &1, version, options),
@@ -178,7 +222,7 @@ defmodule BibleScrapper do
         "https://www.biblegateway.com/passage/?search=John+3&version=ESV"
 
   """
-  def bible_gateway_chapter_url(book, chapter, version \\ @default_bible_version) do
+  def bible_gateway_chapter_url(book, chapter, version) do
     "https://www.biblegateway.com/passage/?search=#{URI.encode("#{book} #{chapter}")}&version=#{URI.encode_www_form(version)}"
   end
 end
