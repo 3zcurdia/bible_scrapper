@@ -43,11 +43,11 @@ defmodule BibleScrapper.Crossref do
     end)
   end
 
-  defp split_refs(nil), do: []
-
-  defp split_refs(str) do
+  defp split_refs(str) when is_binary(str) do
     str
     |> String.split(~r/,\s*/)
     |> Enum.map(&String.trim/1)
   end
+
+  defp split_refs(_), do: []
 end

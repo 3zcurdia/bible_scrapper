@@ -217,11 +217,11 @@ defmodule BibleScrapper do
 
     ## Examples
 
-        iex> BibleScrapper.bible_gateway_chapter_url("John", 3)
-        "https://www.biblegateway.com/passage/?search=John+3&version=NRSVUE"
+        iex> BibleScrapper.bible_gateway_chapter_url("John", 3, "NRSVUE")
+        "https://www.biblegateway.com/passage/?search=John%203&version=NRSVUE"
 
         iex> BibleScrapper.bible_gateway_chapter_url("John", 3, "ESV")
-        "https://www.biblegateway.com/passage/?search=John+3&version=ESV"
+        "https://www.biblegateway.com/passage/?search=John%203&version=ESV"
 
   """
   def bible_gateway_chapter_url(book, chapter, version) do
