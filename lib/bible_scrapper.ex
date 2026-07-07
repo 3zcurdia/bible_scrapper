@@ -135,6 +135,7 @@ defmodule BibleScrapper do
   defp to_markdown_chapters(chapters) do
     chapters
     |> Enum.map(& &1.chapter)
+    |> Enum.uniq()
     |> Enum.sort()
     |> Enum.map_join("\n\n", fn chapter_num ->
       chapter = Enum.find(chapters, &(&1.chapter == chapter_num))
@@ -154,6 +155,7 @@ defmodule BibleScrapper do
   defp to_markdown_verses(verses) do
     verses
     |> Enum.map(& &1.verse)
+    |> Enum.uniq()
     |> Enum.sort()
     |> Enum.map_join("\n", fn verse_num ->
       verse = Enum.find(verses, &(&1.verse == verse_num))
