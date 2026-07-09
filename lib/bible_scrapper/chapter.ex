@@ -40,6 +40,7 @@ defmodule BibleScrapper.Chapter do
     |> Crossref.scrape()
   end
 
+  # credo:disable-for-lines:25 Credo.Check.Refactor.Nesting
   defp build_verse(verse, footnotes, crossrefs, options) do
     new_content =
       if Keyword.get(options, :verse_content_object, false) do
