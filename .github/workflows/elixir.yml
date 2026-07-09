@@ -25,7 +25,7 @@ jobs:
         elixir-version: '1.18'
         otp-version: '27.0'
     - name: Restore dependencies cache
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: |
           deps
