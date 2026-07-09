@@ -25,7 +25,7 @@ defmodule BibleScrapper.MixProject do
 
   defp deps do
     [
-      {:req, "~> 0.5.16"},
+      {:req, "~> 0.6.2"},
       {:floki, "~> 0.38.0"},
       {:styler, "~> 1.10", only: [:dev, :test], runtime: false},
       {:credo, "~> 1.7", only: :dev, runtime: false},
