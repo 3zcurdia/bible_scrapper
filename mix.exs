@@ -29,7 +29,7 @@ defmodule BibleScrapper.MixProject do
       {:floki, "~> 0.38.0"},
       {:styler, "~> 1.10", only: [:dev, :test], runtime: false},
       {:credo, "~> 1.7", only: :dev, runtime: false},
-      {:ex_doc, "~> 0.39.1", only: :dev, runtime: false}
+      {:ex_doc, "~> 0.40.3", only: :dev, runtime: false}
     ]
   end
 end
